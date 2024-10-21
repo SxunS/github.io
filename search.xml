@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Elasticsearch安装步骤</title>
+    <url>/2024/07/16/Elasticsearch%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4/</url>
+    <content><![CDATA[<h1 id="Elasticsearch安装"><a href="#Elasticsearch安装" class="headerlink" title="Elasticsearch安装"></a>Elasticsearch安装</h1><span id="more"></span>
+
+<h3 id="下载安装公钥签名"><a href="#下载安装公钥签名" class="headerlink" title="下载安装公钥签名"></a>下载安装公钥签名</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch</span><br></pre></td></tr></table></figure>
+
+<h3 id="从rpm-REPO-安装-后续更新可用"><a href="#从rpm-REPO-安装-后续更新可用" class="headerlink" title="从rpm REPO 安装(后续更新可用)"></a>从rpm REPO 安装(后续更新可用)</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo bash -c &#x27;cat &gt;&gt; /etc/yum.repos.d/elasticsearch.repo &lt;&lt; EOF</span><br><span class="line">[elasticsearch]</span><br><span class="line">name=Elasticsearch repository for 7.x packages</span><br><span class="line">baseurl=https://artifacts.elastic.co/packages/7.x/yum</span><br><span class="line">gpgcheck=1</span><br><span class="line">gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch</span><br><span class="line">enabled=1</span><br><span class="line">autorefresh=1</span><br><span class="line">type=rpm-md</span><br><span class="line">EOF&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>使用rpm包手动安装，指定版本</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line"># 下载rpm包</span><br><span class="line">wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.13-x86_64.rpm</span><br><span class="line"># 下载校验文件</span><br><span class="line">wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.13-x86_64.rpm.sha512</span><br><span class="line"># 校验完整性</span><br><span class="line">sha512sum -c elasticsearch-7.17.13-x86_64.rpm.sha512</span><br><span class="line"># 安装 </span><br><span class="line">sudo rpm --install elasticsearch-7.17.13-x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改配置文件"><a href="#修改配置文件" class="headerlink" title="修改配置文件"></a>修改配置文件</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/elasticsearch/elasticsearch.yml</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">cluster.name: erp-zh</span><br><span class="line">node.name: node-x</span><br><span class="line">path.data: /opt/data/elasticsearch/data</span><br><span class="line">path.log: /opt/data/elasticsearch/log</span><br><span class="line">network.host: 0.0.0.0</span><br><span class="line">http.port: 9200</span><br><span class="line">discovery.seed_hosts: [&quot;node-1.ip&quot;,&quot;node-2.ip&quot;,&quot;node-3.ip&quot;]</span><br><span class="line">cluster.initial_master_nodes: [&quot;node-1&quot;,&quot;node-2&quot;,&quot;node-3&quot;]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="初始化目录"><a href="#初始化目录" class="headerlink" title="初始化目录"></a>初始化目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo mkdir -p /opt/data/elasticsearch/data</span><br><span class="line">sudo mkdir -p /opt/data/elasticsearch/data</span><br><span class="line">sudo chown -R elasticsearch:elasticsearch /opt/data/elasticsearch</span><br></pre></td></tr></table></figure>
+
+<h3 id="设置keyStore密码（非必须）"><a href="#设置keyStore密码（非必须）" class="headerlink" title="设置keyStore密码（非必须）"></a>设置keyStore密码（非必须）</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo bash -c &#x27;echo &quot;password&quot; &gt; /opt/data/elasticsearch/pwd_file.tmp&#x27;</span><br><span class="line">sudo chmod 600 /opt/data/elasticsearch/pwd_file.tmp</span><br><span class="line">sudo chown elasticsearch:elasticsearch /opt/data/elasticsearch/pwd_file.tmp</span><br><span class="line">sudo systemctl set-environment ES_KEYSTORE_PASSPHRASE_FILE=/opt/data/elasticsearch/pwd_file.tmp</span><br></pre></td></tr></table></figure>
+
+<h3 id="启动并设置开机启动"><a href="#启动并设置开机启动" class="headerlink" title="启动并设置开机启动"></a>启动并设置开机启动</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo systemctl daemon-reload</span><br><span class="line">sudo systemctl enable elasticsearch</span><br><span class="line">sudo systemctl start elasticsearch</span><br></pre></td></tr></table></figure>
+
+<h3 id="配置ssl"><a href="#配置ssl" class="headerlink" title="配置ssl"></a>配置ssl</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo /usr/share/elasticsearch/bin/elasticsearch-certutil ca</span><br><span class="line">sudo /usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca elastic-stack-ca.p12</span><br><span class="line">sudo cp /usr/share/elasticsearch/elastic-certificates.p12 /etc/elasticsearch/</span><br><span class="line"><span class="meta prompt_">#</span><span class="language-bash"><span class="comment"># 编辑配置</span></span></span><br><span class="line">sudo vim /etc/elasticsearch/elasticsearch.yml</span><br><span class="line">xpack.security.enabled: true</span><br><span class="line">xpack.security.transport.ssl.enabled: true</span><br><span class="line">xpack.security.transport.ssl.verification_mode: certificate</span><br><span class="line">xpack.security.transport.ssl.client_authentication: required</span><br><span class="line">xpack.security.transport.ssl.keystore.path: elastic-certificates.p12</span><br><span class="line">xpack.security.transport.ssl.truststore.path: elastic-certificates.p12</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">重新启动</span></span><br><span class="line">sudo systemctl restart elasticsearch</span><br></pre></td></tr></table></figure>
+
+<h3 id="手动设置密码"><a href="#手动设置密码" class="headerlink" title="手动设置密码"></a>手动设置密码</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo /usr/share/elasticsearch/bin/elasticsearch-setup-passwords interactive</span><br></pre></td></tr></table></figure>
+
+
+]]></content>
+      <tags>
+        <tag>Elasticsearch,运维</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MySQL安装步骤</title>
+    <url>/2024/07/16/MySQL%E5%AE%89%E8%A3%85%E6%AD%A5%E9%AA%A4/</url>
+    <content><![CDATA[<h1 id="mysql安装"><a href="#mysql安装" class="headerlink" title="mysql安装"></a>mysql安装</h1><span id="more"></span>
+
+<h3 id="下载-Mysql-Yum-repository"><a href="#下载-Mysql-Yum-repository" class="headerlink" title="下载 Mysql Yum repository"></a>下载 Mysql Yum repository</h3><figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">wget https://dev.mysql.com/get/mysql84-community-release-el7-1.noarch.rpm</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo rpm -ivh mysql84-community-release-el7-1.noarch.rpm</span><br></pre></td></tr></table></figure>
+
+<h3 id="禁用mysql仓库"><a href="#禁用mysql仓库" class="headerlink" title="禁用mysql仓库"></a>禁用mysql仓库</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum-config-manager --disable mysql57-community</span><br><span class="line">sudo yum-config-manager --disable mysql56-community</span><br><span class="line">sudo yum-config-manager --disable mysql55-community</span><br><span class="line">sudo yum-config-manager --disable mysql80-community</span><br><span class="line">sudo yum-config-manager --disable mysql84-community</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建自定义yum-仓库文件"><a href="#创建自定义yum-仓库文件" class="headerlink" title="创建自定义yum 仓库文件"></a>创建自定义yum 仓库文件</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/yum.repos.d/mysql-community.repo</span><br><span class="line"></span><br><span class="line">[mysql-8.0.36]</span><br><span class="line">name=MySQL 8.0.36 Community Server</span><br><span class="line">baseurl=https://repo.mysql.com/yum/mysql-8.0-community/el/7/x86_64/</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=1</span><br><span class="line">gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-mysql</span><br></pre></td></tr></table></figure>
+
+<h3 id="清理缓存并安装mysql8-0-36"><a href="#清理缓存并安装mysql8-0-36" class="headerlink" title="清理缓存并安装mysql8.0.36"></a>清理缓存并安装mysql8.0.36</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum clean all</span><br><span class="line">sudo yum install mysql-community-server-8.0.36</span><br></pre></td></tr></table></figure>
+
+<h3 id="编辑配置文件"><a href="#编辑配置文件" class="headerlink" title="编辑配置文件"></a>编辑配置文件</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/my.cnf</span><br><span class="line"># 根据实际业务与机器配置修改</span><br></pre></td></tr></table></figure>
+
+<h3 id="启动mysql"><a href="#启动mysql" class="headerlink" title="启动mysql"></a>启动mysql</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">mkdir -p /opt/data/mysqldata</span><br><span class="line">mkdir -p /opt/data/mysqllog/error</span><br><span class="line">mkdir -p /opt/data/mysqllog/general</span><br><span class="line">mkdir -p /opt/data/mysqllog/slow-query</span><br><span class="line"></span><br><span class="line">touch /opt/data/mysqllog/error/mysqld.log</span><br><span class="line">touch /opt/data/mysqllog/general/mysql-general.log</span><br><span class="line">touch /opt/data/mysqllog/slow-query/mysql-slow.sql</span><br><span class="line"></span><br><span class="line">sudo chown -R mysql:mysql /opt/data/mysqllog /opt/data/mysqldata</span><br><span class="line"></span><br><span class="line">sudo systemctl start mysqld</span><br><span class="line">sudo systemctl enable mysqld</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="获取mysql-密码"><a href="#获取mysql-密码" class="headerlink" title="获取mysql 密码"></a>获取mysql 密码</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo grep &#x27;temporary password&#x27; /opt/data/mysqllog/error/mysqld.log</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改临时密码"><a href="#修改临时密码" class="headerlink" title="修改临时密码"></a>修改临时密码</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">ALTER USER &#x27;root&#x27;@&#x27;localhost&#x27; identified by &#x27;xxx&#x27;;</span><br><span class="line">#授权</span><br><span class="line">grant all privileges on *.* to &#x27;user&#x27;@&#x27;host&#x27;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="运行安全脚本"><a href="#运行安全脚本" class="headerlink" title="运行安全脚本"></a>运行安全脚本</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">sudo mysql_secure_installation</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>MySQL,运维</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World</title>
+    <url>/2024/10/21/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<span id="more"></span>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>My New Post</title>
+    <url>/2024/02/23/My-New-Post/</url>
+    <content><![CDATA[<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><span id="more"></span>
+
+<p>hello .</p>
+]]></content>
+      <tags>
+        <tag>测试</tag>
+      </tags>
+  </entry>
+</search>
